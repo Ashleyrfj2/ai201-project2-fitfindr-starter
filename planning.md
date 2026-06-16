@@ -15,54 +15,69 @@ You must have at least 3 tools. The three required tools are listed — add any 
 ### Tool 1: search_listings
 
 **What it does:**
-<!-- Describe what this tool does in 1–2 sentences -->
+This tool searches the data for items that match the requested outfit description using size and max price as additional filters.
 
 **Input parameters:**
 <!-- List each parameter, its type, and what it represents -->
-- `description` (str): ...
-- `size` (str): ...
-- `max_price` (float): ...
+- `description` (str): Descriptive keywords the usr is looking for 
+- `size` (str): The size the user is requesting for the outfit, S, M, L or none if not provided
+- `max_price` (float): The max amount of the total price for the agent to use as a filter. 0 if the user does not provide one
 
 **What it returns:**
-<!-- Describe the return value — what fields does a result contain? -->
+"id": 
+"title"
+"description"
+"category": 
+"style_tags": 
+"size": 
+"condition": 
+"price": 
+"colors": 
+"brand": 
+"platform": 
+Best matching result will be returned first
 
 **What happens if it fails or returns nothing:**
-<!-- What should the agent do if no listings match? -->
+An empty list should be returned and the agent should tell the user that there were no results based off the current request and to modify the request to be more broad.
 
 ---
 
 ### Tool 2: suggest_outfit
 
 **What it does:**
-<!-- Describe what this tool does in 1–2 sentences -->
+It uses the item from the search_listing to find an outfit recommendation from the users available items. If there are no available items based on the users input, then LLM should use basic styling guidelines and suggest recommendations and brands that fit the users need.
 
 **Input parameters:**
 <!-- List each parameter, its type, and what it represents -->
-- `new_item` (dict): ...
-- `wardrobe` (dict): ...
+- `new_item` (dict):  The outfit suggestion returned from suggest_outfit
+- `wardrobe` (dict): The users current owned items
 
 **What it returns:**
-<!-- Describe the return value -->
+This tool should return listings that meets the users request and why it is being suggested as an outfit. Such as matching current trends, colors compliment, weather, etc.
 
 **What happens if it fails or returns nothing:**
-<!-- What should the agent do if the wardrobe is empty or no outfit can be suggested? -->
+LLM should provide basic style guidance for the user based off the users request. Such as, "If you increase your max price $20, there will be a few outfits that would work for what you are looking for"
 
 ---
 
 ### Tool 3: create_fit_card
 
 **What it does:**
-<!-- Describe what this tool does in 1–2 sentences -->
+The results from the other two calls are used to create a description of the outfit that matches the users request.  The description should match the users overall tone and voice from the original input.
 
 **Input parameters:**
 <!-- List each parameter, its type, and what it represents -->
-- `outfit` (...): ...
+- `outfit` (...): The complete list of items that make up the requested outfit
 
 **What it returns:**
-<!-- Describe the return value -->
+A description of the outfit that was found to match the users request. 
+A list of each item that is included in the suggested outfit with the price and a one sentence description of the item.
+
+The description should match the users overall tone and voice. 
+If no outfit is being returned, a 
 
 **What happens if it fails or returns nothing:**
-<!-- What should the agent do if the outfit data is incomplete? -->
+No exceptions - General recommendations are returned based off the users request
 
 ---
 
@@ -92,9 +107,9 @@ For each tool, describe the specific failure mode you're handling and what the a
 
 | Tool | Failure mode | Agent response |
 |------|-------------|----------------|
-| search_listings | No results match the query | |
-| suggest_outfit | Wardrobe is empty | |
-| create_fit_card | Outfit input is missing or incomplete | |
+| search_listings | No results match the query | | Basic styling advice based off what the user already owns
+| suggest_outfit | Wardrobe is empty | | Suggest the user update settings
+| create_fit_card | Outfit input is missing or incomplete | | Explain what information is missing to the user so the user can modify the request
 
 ---
 
@@ -125,6 +140,7 @@ For each tool, describe the specific failure mode you're handling and what the a
      before trusting it" is a plan. -->
 
 **Milestone 3 — Individual tool implementations:**
+I will use auto agent in co-pilot and will work on one tool at a time. I will share the information I provided in the plan directly under each tool.
 
 **Milestone 4 — Planning loop and state management:**
 
@@ -138,9 +154,15 @@ Write out what a full user interaction looks like from start to finish — tool 
 
 **Step 1:**
 <!-- What does the agent do first? Which tool is called? With what input? -->
+Agent runs the tool call search_listing and users the description, size, and max price to filter through options. The tool uses the users input to determine what is being used as description, size, and max price. 
+
+If no results then the agent does not continue the remaining tool callls but outputs a message to the user that there are no available results.
+
+If there are results then the agent stores the first result that matches it is stored for the remaining tool calls
 
 **Step 2:**
 <!-- What happens next? What was returned from step 1? What tool is called now? -->
+The agent calls suggest_outfit and uses the stored results from step 1 and stores it to be used for the fit card
 
 **Step 3:**
 <!-- Continue until the full interaction is complete -->

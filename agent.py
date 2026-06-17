@@ -98,39 +98,24 @@ def run_agent(query: str, wardrobe: dict) -> dict:
     q = (query or "").strip()
     parsed = {"description": q, "size": None, "max_price": None}
 
-    # price: look for 'under $30' or 'under 30' or '$30' with 'under' or 'below'
     import re
-    m = re.search(r"(?:under|below)\s*\$?(\d+(?:\.\d+)?)", q, flags=re.I)
-    if not m:
-        # also allow queries like '... for $30' or 'max $30'
-        m = re.search(r"(?:for|\$|max)\s*\$?(\d+(?:\.\d+)?)", q, flags=re.I)
-    if m:
-        try:
-            parsed["max_price"] = float(m.group(1))
-        except Exception:
-            parsed["max_price"] = None
 
-    # size: look for 'size M' or common sizes (XS,S,M,L,XL) or numeric like W30
-    m2 = re.search(r"size\s*[:]?\s*([A-Za-z0-9/+-]+)", q, flags=re.I)
-    if not m2:
-        m2 = re.search(r"\b(XS|S|M|L|XL|XXS|XXL|S/M|M/L|W\d{2})\b", q, flags=re.I)
-    if m2:
-        parsed["size"] = m2.group(1)
+    price_match = re.search(r"\$\s*(\d+(?:\.\d+)?)", q)
+    if price_match:
+        parsed["max_price"] = float(price_match.group(1))
 
-    # Build a cleaned description by removing explicit price/size phrases
-    desc = q
-    desc = re.sub(r"(?:under|below)\s*\$?\d+(?:\.\d+)?", "", desc, flags=re.I)
-    desc = re.sub(r"size\s*[:]?\s*[A-Za-z0-9/+-]+", "", desc, flags=re.I)
-    desc = re.sub(r"\$\s*\d+(?:\.\d+)?", "", desc)
-    parsed["description"] = re.sub(r"\s+", " ", desc).strip()
+    size_match = re.search(
+        r"\bsize\s*:?\s*(W\d{2}(?:\s*L\d{2})?|S/M|M/L|XXS|XXL|XS|XL|S|M|L)\b",
+        q,
+        flags=re.I,
+    )
+    if size_match:
+        parsed["size"] = size_match.group(1)
+
     session["parsed"] = parsed
 
     # Step 3: search
-    try:
-        results = search_listings(parsed["description"], parsed["size"], parsed["max_price"])
-    except Exception as e:
-        session["error"] = f"search_listings failed: {e}"
-        return session
+    results = search_listings(parsed["description"], parsed["size"], parsed["max_price"])
 
     session["search_results"] = results
     if not results:
@@ -141,20 +126,12 @@ def run_agent(query: str, wardrobe: dict) -> dict:
     session["selected_item"] = results[0]
 
     # Step 5: suggest outfit
-    try:
-        outfit = suggest_outfit(session["selected_item"], wardrobe)
-        session["outfit_suggestion"] = outfit
-    except Exception as e:
-        session["error"] = f"suggest_outfit failed: {e}"
-        return session
+    outfit = suggest_outfit(session["selected_item"], wardrobe)
+    session["outfit_suggestion"] = outfit
 
     # Step 6: create fit card
-    try:
-        fit = create_fit_card(session["outfit_suggestion"], session["selected_item"])
-        session["fit_card"] = fit
-    except Exception as e:
-        session["error"] = f"create_fit_card failed: {e}"
-        return session
+    fit = create_fit_card(session["outfit_suggestion"], session["selected_item"])
+    session["fit_card"] = fit
 
     # Success
     session["error"] = None
@@ -184,3 +161,4 @@ if __name__ == "__main__":
         wardrobe=get_example_wardrobe(),
     )
     print(f"Error message: {session2['error']}")
+

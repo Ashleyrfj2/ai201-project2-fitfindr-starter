@@ -90,14 +90,20 @@ No exceptions - General recommendations are returned based off the users request
 ## Planning Loop
 
 **How does your agent decide which tool to call next?**
-<!-- Describe the logic your planning loop uses. What does it look at? What conditions change its behavior? How does it know when it's done? -->
+The agent parses the query first to extract description, size, and max price. Then it calls `search_listings`. If there are results, it takes the top item and calls `suggest_outfit` with that item and the wardrobe. After that it calls `create_fit_card` using the outfit suggestion and the selected item. If `search_listings` returns nothing, it stops and returns a no-results fallback instead.
 
 ---
 
 ## State Management
 
 **How does information from one tool get passed to the next?**
-<!-- Describe how your agent stores and accesses state within a session. What data is tracked? How is it passed between tool calls? -->
+All the interaction state lives in a single `session` dict created at the start of `run_agent`. Each tool writes its output into `session`, and the next tool reads what it needs from there, so the user only provides input once.
+
+The session stores: `query` for the original request; `parsed` for the description, size, and max price; `search_results` for the listing matches; `selected_item` for the top listing; `wardrobe` for the user’s items; `outfit_suggestion` from `suggest_outfit`; `fit_card` from `create_fit_card`; and `error` if the run ends early.
+
+Write/read flow: `run_agent` parses the query and writes `parsed`; `search_listings` writes `search_results`, and if empty `error` is set and the run stops, otherwise `selected_item` is set; `suggest_outfit` reads `selected_item` and `wardrobe`, then writes `outfit_suggestion`; `create_fit_card` reads `outfit_suggestion` and `selected_item`, then writes `fit_card`; finally `run_agent` returns the full session.
+
+State is passed by storing each tool result in `session` and letting the next tool pull its input from those fields, with the dict as the single source of truth carried through the whole interaction.
 
 ---
 
@@ -115,14 +121,25 @@ For each tool, describe the specific failure mode you're handling and what the a
 
 ## Architecture
 
-<!-- Draw a diagram of your agent showing how the components connect:
-     User input → Planning Loop → Tools (search_listings, suggest_outfit, create_fit_card)
-                                                                          ↕
-                                                                   State / Session
-     Show what triggers each tool, how state flows between them, and where error paths branch off.
-     ASCII art, a Mermaid diagram (https://mermaid.js.org/syntax/flowchart.html), or an embedded
-     sketch are all fine. You'll share this diagram with an AI tool when asking it to implement
-     the planning loop and each individual tool. -->
+User input -> Planning Loop -> `search_listings`
+                 \                             |
+                  \-> no results -> fallback text |
+                                               v
+                                       `suggest_outfit` -> `create_fit_card` -> final user message
+
+```mermaid
+flowchart TD
+  U[User request] --> P[Planning loop]
+  P --> S1[search_listings]
+  S1 -->|matches| S2[suggest_outfit]
+  S1 -->|no matches| F[Fallback / error message]
+  S2 --> C[create_fit_card]
+  C --> O[Final output]
+  P --> ST[Session state]
+  ST --> S1
+  ST --> S2
+  ST --> C
+```
 
 ---
 
@@ -143,6 +160,7 @@ For each tool, describe the specific failure mode you're handling and what the a
 I will use auto agent in co-pilot and will work on one tool at a time. I will share the information I provided in the plan directly under each tool.
 
 **Milestone 4 — Planning loop and state management:**
+Use auto agent to wire the tools together, keep state in one session object, and do a simple flow: search -> suggest -> create fit card.
 
 ---
 
@@ -166,6 +184,6 @@ The agent calls suggest_outfit and uses the stored results from step 1 and store
 
 **Step 3:**
 <!-- Continue until the full interaction is complete -->
-
+The agent calls create_fit_card and creates a 2-4 sentence post formatted for social media that includes the outfit created from suggest_outfit
 **Final output to user:**
-<!-- What does the user actually see at the end? -->
+The item that matches the users request, a suggested outfit, and a fit card formatted based on the suggest outfit
